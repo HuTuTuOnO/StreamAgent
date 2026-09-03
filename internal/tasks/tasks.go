@@ -36,6 +36,22 @@ type ServerTask struct {
 	logf func(string, ...any)
 }
 
+// routeGroup 保存一个最佳节点以及它承载的平台规则。
+type routeGroup struct {
+	Alias   string
+	Type    string
+	Host    string
+	Port    int
+	Value1  string
+	Value2  string
+	Value3  string
+	Value4  string
+	Value5  string
+	Value6  string
+	Entries []string
+	seen    map[string]struct{}
+}
+
 func NewClientTask(cfg *config.Config, apiClient *api.Client, logf func(string, ...any)) *ClientTask {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -65,6 +81,7 @@ func (t *ClientTask) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	lockedPlatforms = filterExcluded(lockedPlatforms, t.cfg.Exclude)
 	if len(lockedPlatforms) == 0 {
 		if t.cfg.Debug {
 			t.logf("no locked platforms detected")
@@ -121,20 +138,110 @@ func (t *ServerTask) Run(ctx context.Context) error {
 	return nil
 }
 
-// routeGroup 保存一个最佳节点以及它承载的平台规则。
-type routeGroup struct {
-	Alias   string
-	Type    string
-	Host    string
-	Port    int
-	Value1  string
-	Value2  string
-	Value3  string
-	Value4  string
-	Value5  string
-	Value6  string
-	Entries []string
-	seen    map[string]struct{}
+// detectLatency 先按 stack 选择地址，再用 TCP 建连时间作为延迟。
+// default 直接用域名；ipv4/ipv6 会先查 DNS，找不到对应记录就返回错误。
+func detectLatency(ctx context.Context, host string, port int, stack string, debug bool, logf func(string, ...any), alias string) (string, string, error) {
+	resolvedHost := host
+	if stack == "ipv4" || stack == "ipv6" {
+		// 如果输入本身已经是 IP，就直接检查它是否符合当前要求。
+		if ip := net.ParseIP(host); ip != nil {
+			if stack == "ipv4" && ip.To4() != nil {
+				resolvedHost = host
+			} else if stack == "ipv6" && ip.To16() != nil && ip.To4() == nil {
+				resolvedHost = host
+			} else {
+				return "", "", fmt.Errorf("host %s does not match %s", host, stack)
+			}
+		} else {
+			ips, err := dnsResolver.LookupIPAddr(ctx, host)
+			if err != nil {
+				return "", "", err
+			}
+			for _, ip := range ips {
+				if stack == "ipv4" && ip.IP.To4() != nil {
+					resolvedHost = ip.IP.String()
+					break
+				}
+				if stack == "ipv6" && ip.IP.To16() != nil && ip.IP.To4() == nil {
+					resolvedHost = ip.IP.String()
+					break
+				}
+			}
+			if resolvedHost == host {
+				return "", "", fmt.Errorf("resolve %s to %s failed", host, stack)
+			}
+		}
+	} else if ip := net.ParseIP(host); ip == nil {
+		ips, err := dnsResolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return "", "", err
+		}
+		if len(ips) > 0 {
+			resolvedHost = ips[0].IP.String()
+		}
+	}
+
+	// default 直接走域名或已解析后的 IP，下面统一做 TCP 探测。
+	addr := net.JoinHostPort(resolvedHost, strconv.Itoa(port))
+	start := time.Now()
+	d := net.Dialer{Timeout: 2 * time.Second}
+	conn, err := d.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return "", "", err
+	}
+	_ = conn.Close()
+	latency := fmt.Sprintf("%.2f", float64(time.Since(start).Microseconds())/1000)
+	return latency, resolvedHost, nil
+}
+
+// probeNodes 给节点补上延迟，并按 stack 决定是否先解析成 IPv4/IPv6。
+// default 表示直接使用域名；ipv4/ipv6 则必须先解析到对应记录。
+func probeNodes(ctx context.Context, nodes map[string]model.Node, stack string, debug bool, logf func(string, ...any)) map[string]model.Node {
+	result := make(map[string]model.Node, len(nodes))
+	for alias, node := range nodes {
+		originalHost := node.Host
+		latency, resolvedHost, err := detectLatency(ctx, node.Host, node.Port, stack, debug, logf, alias)
+		if err == nil {
+			node.Time = latency
+			resolved := resolvedHost
+			if resolved != "" && resolved != node.Host {
+				node.Host = resolved
+			}
+			if debug {
+				if resolved != "" && resolved != originalHost {
+					logf("node %s: %s -> %s (%sms)", alias, originalHost, resolved, latency)
+				} else {
+					logf("node %s: %s (%sms)", alias, originalHost, latency)
+				}
+			}
+		} else if debug {
+			logf("node %s latency check failed, removed", alias)
+		}
+		result[alias] = node
+	}
+	return result
+}
+
+// compareLatency 用字符串形式的毫秒值比较两个节点延迟。
+func compareLatency(a, b string) int {
+	if b == "" {
+		return -1
+	}
+	if a == "" {
+		return 1
+	}
+	af, aerr := strconv.ParseFloat(a, 64)
+	bf, berr := strconv.ParseFloat(b, 64)
+	if aerr != nil || berr != nil {
+		return strings.Compare(a, b)
+	}
+	if af < bf {
+		return -1
+	}
+	if af > bf {
+		return 1
+	}
+	return 0
 }
 
 func pickRoutes(nodes map[string]model.Node, platforms map[string]model.Platform, locked map[string]struct{}, debug bool, logf func(string, ...any)) ([]routeGroup, error) {
@@ -236,55 +343,6 @@ func pickRoutes(nodes map[string]model.Node, platforms map[string]model.Platform
 	return result, nil
 }
 
-// probeNodes 给节点补上延迟，并按 stack 决定是否先解析成 IPv4/IPv6。
-func probeNodes(ctx context.Context, nodes map[string]model.Node, stack string, debug bool, logf func(string, ...any)) map[string]model.Node {
-	result := make(map[string]model.Node, len(nodes))
-	for alias, node := range nodes {
-		originalHost := node.Host
-		latency, resolvedHost, err := detectLatency(ctx, node.Host, node.Port, stack, debug, logf, alias)
-		if err == nil {
-			node.Time = latency
-			resolved := resolvedHost
-			if resolved != "" && resolved != node.Host {
-				node.Host = resolved
-			}
-			if debug {
-				if resolved != "" && resolved != originalHost {
-					logf("node %s: %s -> %s (%sms)", alias, originalHost, resolved, latency)
-				} else {
-					logf("node %s: %s (%sms)", alias, originalHost, latency)
-				}
-			}
-		} else if debug {
-			logf("node %s latency check failed, removed", alias)
-		}
-		result[alias] = node
-	}
-	return result
-}
-
-// compareLatency 用字符串形式的毫秒值比较两个节点延迟。
-func compareLatency(a, b string) int {
-	if b == "" {
-		return -1
-	}
-	if a == "" {
-		return 1
-	}
-	af, aerr := strconv.ParseFloat(a, 64)
-	bf, berr := strconv.ParseFloat(b, 64)
-	if aerr != nil || berr != nil {
-		return strings.Compare(a, b)
-	}
-	if af < bf {
-		return -1
-	}
-	if af > bf {
-		return 1
-	}
-	return 0
-}
-
 // filterExcluded 过滤掉 server 模式里不需要上报的平台。
 func filterExcluded(platforms, exclude []string) []string {
 	if len(exclude) == 0 {
@@ -351,60 +409,4 @@ func writeSogaRoutes(routes []routeGroup) error {
 		return err
 	}
 	return os.WriteFile("/etc/soga/routes.toml", []byte(b.String()), 0o644)
-}
-
-// detectLatency 先按 stack 选择地址，再用 TCP 建连时间作为延迟。
-// default 直接用域名；ipv4/ipv6 会先查 DNS，找不到对应记录就返回错误。
-func detectLatency(ctx context.Context, host string, port int, stack string, debug bool, logf func(string, ...any), alias string) (string, string, error) {
-	resolvedHost := host
-	if stack == "ipv4" || stack == "ipv6" {
-		// 如果输入本身已经是 IP，就直接检查它是否符合当前要求。
-		if ip := net.ParseIP(host); ip != nil {
-			if stack == "ipv4" && ip.To4() != nil {
-				resolvedHost = host
-			} else if stack == "ipv6" && ip.To16() != nil && ip.To4() == nil {
-				resolvedHost = host
-			} else {
-				return "", "", fmt.Errorf("host %s does not match %s", host, stack)
-			}
-		} else {
-			ips, err := dnsResolver.LookupIPAddr(ctx, host)
-			if err != nil {
-				return "", "", err
-			}
-			for _, ip := range ips {
-				if stack == "ipv4" && ip.IP.To4() != nil {
-					resolvedHost = ip.IP.String()
-					break
-				}
-				if stack == "ipv6" && ip.IP.To16() != nil && ip.IP.To4() == nil {
-					resolvedHost = ip.IP.String()
-					break
-				}
-			}
-			if resolvedHost == host {
-				return "", "", fmt.Errorf("resolve %s to %s failed", host, stack)
-			}
-		}
-	} else if ip := net.ParseIP(host); ip == nil {
-		ips, err := dnsResolver.LookupIPAddr(ctx, host)
-		if err != nil {
-			return "", "", err
-		}
-		if len(ips) > 0 {
-			resolvedHost = ips[0].IP.String()
-		}
-	}
-
-	// default 直接走域名或已解析后的 IP，下面统一做 TCP 探测。
-	addr := net.JoinHostPort(resolvedHost, strconv.Itoa(port))
-	start := time.Now()
-	d := net.Dialer{Timeout: 2 * time.Second}
-	conn, err := d.DialContext(ctx, "tcp", addr)
-	if err != nil {
-		return "", "", err
-	}
-	_ = conn.Close()
-	latency := fmt.Sprintf("%.2f", float64(time.Since(start).Microseconds())/1000)
-	return latency, resolvedHost, nil
 }
