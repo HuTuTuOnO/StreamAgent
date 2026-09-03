@@ -237,7 +237,6 @@ func pickRoutes(nodes map[string]model.Node, platforms map[string]model.Platform
 }
 
 // probeNodes 给节点补上延迟，并按 stack 决定是否先解析成 IPv4/IPv6。
-// default 表示直接使用域名；ipv4/ipv6 则必须先解析到对应记录。
 func probeNodes(ctx context.Context, nodes map[string]model.Node, stack string, debug bool, logf func(string, ...any)) map[string]model.Node {
 	result := make(map[string]model.Node, len(nodes))
 	for alias, node := range nodes {
