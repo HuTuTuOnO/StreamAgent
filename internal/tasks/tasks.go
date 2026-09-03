@@ -171,14 +171,8 @@ func detectLatency(ctx context.Context, host string, port int, stack string, deb
 				return "", "", fmt.Errorf("resolve %s to %s failed", host, stack)
 			}
 		}
-	} else if ip := net.ParseIP(host); ip == nil {
-		ips, err := dnsResolver.LookupIPAddr(ctx, host)
-		if err != nil {
-			return "", "", err
-		}
-		if len(ips) > 0 {
-			resolvedHost = ips[0].IP.String()
-		}
+	} else if net.ParseIP(host) != nil {
+		resolvedHost = host
 	}
 
 	// default 直接走域名或已解析后的 IP，下面统一做 TCP 探测。
@@ -214,10 +208,12 @@ func probeNodes(ctx context.Context, nodes map[string]model.Node, stack string, 
 					logf("node %s: %s (%sms)", alias, originalHost, latency)
 				}
 			}
-		} else if debug {
+			result[alias] = node
+			continue
+		}
+		if debug {
 			logf("node %s latency check failed, removed", alias)
 		}
-		result[alias] = node
 	}
 	return result
 }
