@@ -120,7 +120,7 @@ exclude: []
 
 GitHub Release 会生成：
 
-- `stream-agent-linux-amd64.tar.gz`
-- `stream-agent-linux-arm64.tar.gz`
+- `agent-v版本-linux-amd64.tar.gz`
+- `agent-v版本-linux-arm64.tar.gz`
 
 安装脚本会从 Release 下载对应架构的包，并安装服务和管理命令。

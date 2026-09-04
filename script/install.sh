@@ -84,10 +84,13 @@ install_stream() {
     temp_dir=$(mktemp -d)
     archive="${temp_dir}/stream-agent.tar.gz"
     if [[ $version == "latest" ]]; then
-        url="https://github.com/HuTuTuOnO/StreamAgent/releases/latest/download/stream-agent-linux-${arch}.tar.gz"
+        version=$(curl -fsSL "https://api.github.com/repos/HuTuTuOnO/StreamAgent/releases/latest" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+        [[ -z $version ]] && echo -e "${red}获取 StreamAgent 最新版本失败${plain}" && rm -rf "$temp_dir" && exit 1
+        version=${version#v}
+        url="https://github.com/HuTuTuOnO/StreamAgent/releases/download/v${version}/agent-v${version}-linux-${arch}.tar.gz"
     else
         version=${version#v}
-        url="https://github.com/HuTuTuOnO/StreamAgent/releases/download/v${version}/stream-agent-linux-${arch}.tar.gz"
+        url="https://github.com/HuTuTuOnO/StreamAgent/releases/download/v${version}/agent-v${version}-linux-${arch}.tar.gz"
     fi
 
     echo -e "开始安装 StreamAgent ${version}"
@@ -100,7 +103,7 @@ install_stream() {
 
     mkdir -p "${temp_dir}/unpack"
     tar zxvf "$archive" -C "${temp_dir}/unpack" >/dev/null
-    binary=$(find "${temp_dir}/unpack" -type f -name stream-agent -print -quit)
+    binary=$(find "${temp_dir}/unpack" -type f \( -name agent -o -name stream-agent \) -print -quit)
     [[ -z $binary ]] && echo -e "${red}安装包中未找到 StreamAgent 文件${plain}" && rm -rf "$temp_dir" && exit 1
     install -m 0755 "$binary" "${install_dir}/stream-agent"
     rm -rf "$temp_dir"

@@ -42,9 +42,9 @@ jobs:
           set -euo pipefail
           mkdir -p release
           for arch in amd64 arm64; do
-            name="stream-agent-linux-${arch}"
+            name="agent-${VERSION}-linux-${arch}"
             mkdir -p "release/${name}"
-            cp "dist/agent-linux-${arch}" "release/${name}/stream-agent"
+            cp "dist/agent-linux-${arch}" "release/${name}/agent"
             cp README.md "release/${name}/README.md"
             tar -C release -czf "release/${name}.tar.gz" "${name}"
           done
