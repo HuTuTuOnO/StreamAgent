@@ -82,8 +82,7 @@ install_stream() {
     tar zxvf "$archive" -C "${temp_dir}/unpack" >/dev/null
     binary=$(find "${temp_dir}/unpack" -type f \( -name agent -o -name stream-agent \) -print -quit)
     [[ -z $binary ]] && echo -e "${red}安装包中未找到 Stream 文件${plain}" && rm -rf "$temp_dir" && exit 1
-    cp "$binary" "${install_dir}/stream-agent"
-    chmod +x "${install_dir}/stream-agent"
+    command install -m 0755 "$binary" "${install_dir}/stream-agent"
     rm -rf "$temp_dir"
 
     if [[ ! -f "${install_dir}/config.yml" ]]; then
