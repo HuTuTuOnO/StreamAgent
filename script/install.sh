@@ -7,7 +7,6 @@ plain='\033[0m'
 
 cur_dir=$(pwd)
 install_dir="/opt/stream"
-config_file="${install_dir}/config.yml"
 service_name="stream"
 
 [[ $EUID -ne 0 ]] && echo -e "${red}错误：${plain} 必须使用root用户运行此脚本！\n" && exit 1
@@ -59,15 +58,6 @@ install_stream() {
     local binary
 
     mkdir -p "$install_dir"
-    if [[ ! -f $config_file ]]; then
-        if [[ -f "${cur_dir}/script/extras/config.yml" ]]; then
-            cp "${cur_dir}/script/extras/config.yml" "$config_file"
-        else
-            curl -fsSL -o "$config_file" "https://raw.githubusercontent.com/HuTuTuOnO/StreamAgent/main/script/extras/config.yml"
-        fi
-        chmod 0644 "$config_file"
-    fi
-
     temp_dir=$(mktemp -d)
     archive="${temp_dir}/stream-agent.tar.gz"
     if [[ $version == "latest" ]]; then
@@ -95,6 +85,11 @@ install_stream() {
     command install -m 0755 "$binary" "${install_dir}/stream-agent"
     rm -rf "$temp_dir"
 
+    if [[ ! -f "${install_dir}/config.yml" ]]; then
+        curl -fsSL -o "${install_dir}/config.yml" "https://raw.githubusercontent.com/HuTuTuOnO/StreamAgent/main/script/extras/config.yml"
+        chmod 0644 "${install_dir}/config.yml"
+    fi
+
     if [[ $release == "alpine" ]]; then
         curl -fsSL -o /etc/init.d/stream "https://raw.githubusercontent.com/HuTuTuOnO/StreamAgent/main/script/services/stream"
         chmod +x /etc/init.d/stream
@@ -114,7 +109,7 @@ install_stream() {
     chmod +x /usr/bin/stream
 
     echo -e "${green}Stream 安装完成，已设置开机自启${plain}"
-    echo -e "请配置 ${config_file}，然后运行 stream start"
+    echo -e "请配置 ${install_dir}/config.yml，然后运行 stream start"
 }
 
 main() {
