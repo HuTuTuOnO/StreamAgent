@@ -124,3 +124,54 @@ GitHub Release 会生成：
 - `agent-v版本-linux-arm64.tar.gz`
 
 安装脚本会从 Release 下载对应架构的包，并安装服务和管理命令。
+
+## Git 更新版本
+
+项目使用 Git tag 发布版本。版本 tag 建议使用以下格式：
+
+```text
+v主版本号.次版本号.修订号
+```
+
+例如：`v0.0.3`。
+
+完成代码修改后，执行：
+
+```bash
+# 查看修改内容
+git status
+git diff
+
+# 提交代码
+git add .
+git commit -m "release: v0.0.3"
+
+# 推送代码
+git push origin main
+
+# 创建并推送版本 tag
+git tag v0.0.3
+git push origin v0.0.3
+```
+
+推送 `v*` 格式的 tag 后，GitHub Actions 会自动执行：
+
+1. 编译 Linux `amd64` 和 `arm64` 二进制文件
+2. 生成 Release 压缩包
+3. 生成 `SHA256SUMS`
+4. 创建 GitHub Release 并上传文件
+
+发布完成后，可以在 GitHub 仓库的 `Actions` 页面查看构建状态，在 `Releases` 页面查看发布文件：
+
+```text
+agent-v0.0.3-linux-amd64.tar.gz
+agent-v0.0.3-linux-arm64.tar.gz
+```
+
+如果 tag 已经推送，但工作流没有自动执行，可以在 GitHub 的 `Actions` 页面手动运行 `Release` 工作流，并在 `tag` 参数中填写对应的 tag，例如：
+
+```text
+v0.0.3
+```
+
+注意：同一个 tag 不能重复创建。如果需要重新发布同一版本，应先删除远程 Release 和 tag，再重新创建；通常更建议直接递增修订号发布新版本。
