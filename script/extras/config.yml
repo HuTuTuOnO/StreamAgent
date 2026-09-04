@@ -1,6 +1,6 @@
 debug: false
 mode: client # client, server
-api: example.com
+api: https://example.com
 token: 00000000-0000-0000-0000-000000000000
 node: 1 # server 配置
 stack: default # ipv4, ipv6, default client配置
