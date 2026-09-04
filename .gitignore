@@ -1,1 +1,13 @@
+.DS_Store
+.idea/
+.vscode/
+
 dist/
+bin/
+
+*.log
+*.tmp
+*.swp
+
+coverage.out
+*.cover
