@@ -7,7 +7,6 @@ plain='\033[0m'
 
 cur_dir=$(pwd)
 install_dir="/opt/stream"
-service_name="stream"
 
 [[ $EUID -ne 0 ]] && echo -e "${red}错误：${plain} 必须使用root用户运行此脚本！\n" && exit 1
 
