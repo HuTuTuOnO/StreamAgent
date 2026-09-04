@@ -40,11 +40,13 @@ install() {
 update() {
     if [[ $# == 0 ]]; then
         echo && echo -n -e "输入指定版本(默认最新版): " && read stream_version
+        [[ -z "$stream_version" ]] && stream_version="latest"
     else
-        stream_version=$2
+        stream_version="${2:-latest}"
     fi
     bash <(curl -Ls https://raw.githubusercontent.com/HuTuTuOnO/StreamAgent/main/script/install.sh) "$stream_version"
     if [[ $? == 0 ]]; then
+        restart 0
         echo -e "${green}更新完成，已自动重启 StreamAgent，请使用 stream log 查看运行日志${plain}"
         exit
     fi
@@ -320,7 +322,9 @@ if [[ $# > 0 ]]; then
         enable) check_install 0 && enable 0 ;;
         disable) check_install 0 && disable 0 ;;
         log) check_install 0 && show_log 0 ;;
-        update) check_install 0 && update 0 "$2" ;;
+        update)
+            check_install 0 && update 0 "${2:-latest}"
+            ;;
         install) check_uninstall 0 && install 0 ;;
         uninstall) check_install 0 && uninstall 0 ;;
         version) check_install 0 && show_stream_version 0 ;;

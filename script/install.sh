@@ -51,24 +51,12 @@ install_base() {
     fi
 }
 
-check_status() {
-    if [[ $release == "alpine" ]]; then
-        [[ ! -f /etc/init.d/${service_name} ]] && return 2
-        rc-service "$service_name" status 2>&1 | grep -q "started" && return 0
-        return 1
-    fi
-    [[ ! -f /etc/systemd/system/${service_name}.service ]] && return 2
-    systemctl is-active --quiet "${service_name}.service" && return 0
-    return 1
-}
-
 install_stream() {
     local version="${1:-latest}"
     local temp_dir
     local archive
     local url
     local binary
-    local new_install=0
 
     mkdir -p "$install_dir"
     if [[ ! -f $config_file ]]; then
@@ -78,14 +66,13 @@ install_stream() {
             curl -fsSL -o "$config_file" "https://raw.githubusercontent.com/HuTuTuOnO/StreamAgent/main/script/extras/config.yml"
         fi
         chmod 0644 "$config_file"
-        new_install=1
     fi
 
     temp_dir=$(mktemp -d)
     archive="${temp_dir}/stream-agent.tar.gz"
     if [[ $version == "latest" ]]; then
         version=$(curl -fsSL "https://api.github.com/repos/HuTuTuOnO/StreamAgent/releases/latest" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
-        [[ -z $version ]] && echo -e "${red}获取 StreamAgent 最新版本失败${plain}" && rm -rf "$temp_dir" && exit 1
+        [[ -z $version ]] && echo -e "${red}获取 Stream 最新版本失败${plain}" && rm -rf "$temp_dir" && exit 1
         version=${version#v}
         url="https://github.com/HuTuTuOnO/StreamAgent/releases/download/v${version}/agent-v${version}-linux-${arch}.tar.gz"
     else
@@ -93,10 +80,10 @@ install_stream() {
         url="https://github.com/HuTuTuOnO/StreamAgent/releases/download/v${version}/agent-v${version}-linux-${arch}.tar.gz"
     fi
 
-    echo -e "开始安装 StreamAgent ${version}"
+    echo -e "开始安装 Stream ${version}"
     curl -fL --retry 3 -o "$archive" "$url"
     if [[ $? -ne 0 ]]; then
-        echo -e "${red}下载 StreamAgent 失败，请确保你的服务器能够下载 Github 的文件${plain}"
+        echo -e "${red}下载 Stream 失败，请确保你的服务器能够下载 Github 的文件${plain}"
         rm -rf "$temp_dir"
         exit 1
     fi
@@ -104,8 +91,8 @@ install_stream() {
     mkdir -p "${temp_dir}/unpack"
     tar zxvf "$archive" -C "${temp_dir}/unpack" >/dev/null
     binary=$(find "${temp_dir}/unpack" -type f \( -name agent -o -name stream-agent \) -print -quit)
-    [[ -z $binary ]] && echo -e "${red}安装包中未找到 StreamAgent 文件${plain}" && rm -rf "$temp_dir" && exit 1
-    install -m 0755 "$binary" "${install_dir}/stream-agent"
+    [[ -z $binary ]] && echo -e "${red}安装包中未找到 Stream 文件${plain}" && rm -rf "$temp_dir" && exit 1
+    command install -m 0755 "$binary" "${install_dir}/stream-agent"
     rm -rf "$temp_dir"
 
     if [[ $release == "alpine" ]]; then
@@ -119,58 +106,21 @@ install_stream() {
         systemctl enable stream.service
     fi
 
-    if [[ $new_install -eq 0 ]]; then
-        restart
-    else
-        echo -e "${green}StreamAgent 安装完成，已设置开机自启${plain}"
-        echo -e "请先配置 ${config_file}，然后运行 stream start"
-    fi
-}
-
-install_command() {
     curl -fsSL -o /usr/bin/stream "https://raw.githubusercontent.com/HuTuTuOnO/StreamAgent/main/script/stream.sh"
     if [[ $? -ne 0 ]]; then
-        echo -e "${red}下载 StreamAgent 管理脚本失败，请确保你的服务器能够下载 Github 的文件${plain}"
+        echo -e "${red}下载 Stream 管理脚本失败，请确保你的服务器能够下载 Github 的文件${plain}"
         exit 1
     fi
     chmod +x /usr/bin/stream
-}
 
-install() {
-    install_stream "$1"
-}
-
-update() {
-    if [[ $# -eq 0 ]]; then
-        echo && echo -n -e "输入指定版本(默认最新版): " && read version
-        [[ -z $version ]] && version="latest"
-    else
-        version="$1"
-    fi
-    install_stream "$version"
-}
-
-start() {
-    if [[ $release == "alpine" ]]; then
-        rc-service stream start
-    else
-        systemctl start stream.service
-    fi
-}
-
-restart() {
-    if [[ $release == "alpine" ]]; then
-        rc-service stream restart
-    else
-        systemctl restart stream.service
-    fi
+    echo -e "${green}Stream 安装完成，已设置开机自启${plain}"
+    echo -e "请配置 ${config_file}，然后运行 stream start"
 }
 
 main() {
     echo -e "${green}开始安装${plain}"
     install_base
-    install_stream "$1"
-    install_command
+    install_stream "${1:-latest}"
 }
 
 main "$@"
