@@ -35,7 +35,7 @@ target_list() {
 
 mkdir -p "$DIST_DIR"
 
-VERSION="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+VERSION="${VERSION:-$(git -C "$ROOT_DIR" describe --tags --exact-match 2>/dev/null || git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)}"
 BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 for arch in $(target_list "${1:-all}"); do

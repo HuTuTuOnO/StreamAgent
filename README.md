@@ -119,6 +119,44 @@ exclude: []
 ./build.sh arm64
 ```
 
+## 发布 Release
+
+项目使用 Git tag 管理正式版本。推送形如 `v0.0.1` 的 tag 后，GitHub Actions 会自动：
+
+- 编译 Linux `amd64` 和 `arm64` 二进制
+- 生成对应的 `tar.gz` 安装包
+- 生成 `SHA256SUMS` 校验文件
+- 创建 GitHub Release 并上传以上文件
+
+发布新版本：
+
+```bash
+git add .
+git commit -m "release: v0.0.2"
+git push origin main
+git tag v0.0.2
+git push origin v0.0.2
+```
+
+然后在 GitHub 仓库的 `Actions` 页面查看构建状态。成功后，在 `Releases` 页面可以看到新版本和下载附件。
+
+如果 tag 已经推送过，但当时还没有 `.github/workflows/release.yml`，可以进入 `Actions`，选择 `Release` 工作流，点击 `Run workflow`，并在 `tag` 中填写已有的 tag，例如 `v0.0.1`。
+
+服务器升级时，下载对应架构的压缩包，替换服务使用的二进制，然后重启服务：
+
+```bash
+sudo tar -xzf agent-v0.0.2-linux-amd64.tar.gz
+sudo install -m 755 agent-v0.0.2-linux-amd64/agent /opt/stream/agent
+sudo systemctl restart agent
+sudo systemctl status agent
+```
+
+查看当前版本：
+
+```bash
+/opt/stream/agent --version
+```
+
 ## 启动
 
 ```bash

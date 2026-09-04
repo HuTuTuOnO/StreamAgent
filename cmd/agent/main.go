@@ -15,12 +15,22 @@ import (
 	"streamagent/internal/tasks"
 )
 
+var (
+	version   = "dev"
+	buildTime = ""
+)
+
 func main() {
 	logger := log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds)
 
 	configPath := flag.String("c", "", "config file path")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.StringVar(configPath, "config", "", "config file path")
 	flag.Parse()
+	if *showVersion {
+		logger.Printf("version=%s buildTime=%s", version, buildTime)
+		return
+	}
 	if strings.TrimSpace(*configPath) == "" {
 		logger.Fatal("config path is required, use -c <path>")
 	}
