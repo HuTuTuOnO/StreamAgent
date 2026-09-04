@@ -42,10 +42,10 @@ is_cmd_exist() {
 
 install_base() {
     if [[ $release == "alpine" ]]; then
-        apk add --no-cache wget curl tar tzdata openrc
+        apk add --no-cache wget curl tar
     elif is_cmd_exist apt-get; then
         apt-get update
-        apt-get install -y wget curl tar tzdata
+        apt-get install -y wget curl tar
     fi
 }
 
