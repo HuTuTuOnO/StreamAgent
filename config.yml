@@ -1,8 +1,0 @@
-debug: false
-mode: client # client, server
-api: https://stream.airtools.cc
-token: 61ebaa11-00da-40cc-a01b-2f799ece5af2
-node: 1 # server 配置
-stack: default # ipv4, ipv6, default client配置
-scheduler: "0 30 */3 * * *"
-exclude: []
