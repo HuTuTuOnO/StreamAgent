@@ -1,0 +1,18 @@
+[Unit]
+Description=StreamAgent Service
+Documentation=https://github.com/HuTuTuOnO/StreamAgent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/stream
+ExecStart=/opt/stream/stream-agent -c /opt/stream/config.yml
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
