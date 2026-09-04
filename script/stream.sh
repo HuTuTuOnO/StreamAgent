@@ -47,7 +47,7 @@ update() {
     bash <(curl -Ls https://raw.githubusercontent.com/HuTuTuOnO/StreamAgent/main/script/install.sh) "$stream_version"
     if [[ $? == 0 ]]; then
         restart 0
-        echo -e "${green}更新完成，已自动重启 StreamAgent，请使用 stream log 查看运行日志${plain}"
+        echo -e "${green}更新完成，已自动重启 Stream，请使用 stream log 查看运行日志${plain}"
         exit
     fi
 
@@ -55,7 +55,7 @@ update() {
 }
 
 uninstall() {
-    confirm "确定要卸载 StreamAgent 吗?" "n"
+    confirm "确定要卸载 Stream 吗?" "n"
     if [[ $? != 0 ]]; then
         [[ $# == 0 ]] && show_menu
         return 0
@@ -72,10 +72,10 @@ uninstall() {
         systemctl daemon-reload
         systemctl reset-failed
     fi
-    rm /opt/stream/stream-agent -f
+    rm /opt/stream/ -rf
 
     echo ""
-    echo -e "卸载成功，配置文件仍保留在 ${green}/opt/stream/config.yml${plain}"
+    echo -e "卸载成功，如果你想删除此脚本，则退出脚本后运行 ${green}rm /usr/bin/stream -f${plain} 进行删除"
     echo ""
 
     [[ $# == 0 ]] && before_show_menu
@@ -85,7 +85,7 @@ start() {
     check_status
     if [[ $? == 0 ]]; then
         echo ""
-        echo -e "${green}StreamAgent已运行，无需再次启动，如需重启请选择重启${plain}"
+        echo -e "${green}Stream已运行，无需再次启动，如需重启请选择重启${plain}"
     else
         if [[ $release == "alpine" ]]; then
             rc-service stream start >/dev/null 2>&1
@@ -96,9 +96,9 @@ start() {
         sleep 2
         check_status
         if [[ $? == 0 ]]; then
-            echo -e "${green}StreamAgent 启动成功，请使用 stream log 查看运行日志${plain}"
+            echo -e "${green}Stream 启动成功，请使用 stream log 查看运行日志${plain}"
         else
-            echo -e "${red}StreamAgent可能启动失败，请稍后使用 stream log 查看日志信息${plain}"
+            echo -e "${red}Stream可能启动失败，请稍后使用 stream log 查看日志信息${plain}"
         fi
     fi
 
@@ -114,9 +114,9 @@ stop() {
     sleep 2
     check_status
     if [[ $? == 1 ]]; then
-        echo -e "${green}StreamAgent 停止成功${plain}"
+        echo -e "${green}Stream 停止成功${plain}"
     else
-        echo -e "${red}StreamAgent停止失败，可能是因为停止时间超过了两秒，请稍后查看日志信息${plain}"
+        echo -e "${red}Stream停止失败，可能是因为停止时间超过了两秒，请稍后查看日志信息${plain}"
     fi
 
     [[ $# == 0 ]] && before_show_menu
@@ -132,9 +132,9 @@ restart() {
     sleep 2
     check_status
     if [[ $? == 0 ]]; then
-        echo -e "${green}StreamAgent 重启成功，请使用 stream log 查看运行日志${plain}"
+        echo -e "${green}Stream 重启成功，请使用 stream log 查看运行日志${plain}"
     else
-        echo -e "${red}StreamAgent可能启动失败，请稍后使用 stream log 查看日志信息${plain}"
+        echo -e "${red}Stream可能启动失败，请稍后使用 stream log 查看日志信息${plain}"
     fi
     [[ $# == 0 ]] && before_show_menu
 }
@@ -146,9 +146,9 @@ enable() {
         systemctl enable stream
     fi
     if [[ $? == 0 ]]; then
-        echo -e "${green}StreamAgent 设置开机自启成功${plain}"
+        echo -e "${green}Stream 设置开机自启成功${plain}"
     else
-        echo -e "${red}StreamAgent 设置开机自启失败${plain}"
+        echo -e "${red}Stream 设置开机自启失败${plain}"
     fi
 
     [[ $# == 0 ]] && before_show_menu
@@ -161,9 +161,9 @@ disable() {
         systemctl disable stream
     fi
     if [[ $? == 0 ]]; then
-        echo -e "${green}StreamAgent 取消开机自启成功${plain}"
+        echo -e "${green}Stream 取消开机自启成功${plain}"
     else
-        echo -e "${red}StreamAgent 取消开机自启失败${plain}"
+        echo -e "${red}Stream 取消开机自启失败${plain}"
     fi
 
     [[ $# == 0 ]] && before_show_menu
@@ -202,7 +202,7 @@ check_uninstall() {
     check_status
     if [[ $? != 2 ]]; then
         echo ""
-        echo -e "${red}StreamAgent已安装，请不要重复安装${plain}"
+        echo -e "${red}Stream已安装，请不要重复安装${plain}"
         [[ $# == 0 ]] && before_show_menu
         return 1
     fi
@@ -213,7 +213,7 @@ check_install() {
     check_status
     if [[ $? == 2 ]]; then
         echo ""
-        echo -e "${red}请先安装 StreamAgent${plain}"
+        echo -e "${red}请先安装 Stream${plain}"
         [[ $# == 0 ]] && before_show_menu
         return 1
     fi
@@ -224,15 +224,15 @@ show_status() {
     check_status
     case $? in
         0)
-            echo -e "StreamAgent状态: ${green}已运行${plain}"
+            echo -e "Stream状态: ${green}已运行${plain}"
             show_enable_status
             ;;
         1)
-            echo -e "StreamAgent状态: ${yellow}未运行${plain}"
+            echo -e "Stream状态: ${yellow}未运行${plain}"
             show_enable_status
             ;;
         2)
-            echo -e "StreamAgent状态: ${red}未安装${plain}"
+            echo -e "Stream状态: ${red}未安装${plain}"
             ;;
     esac
 }
@@ -247,51 +247,51 @@ show_enable_status() {
 }
 
 show_stream_version() {
-    echo -n "StreamAgent 版本："
+    echo -n "Stream 版本："
     /opt/stream/stream-agent -version
     echo ""
     [[ $# == 0 ]] && before_show_menu
 }
 
 show_usage() {
-    echo "StreamAgent 管理脚本使用方法: "
+    echo "Stream 管理脚本使用方法: "
     echo "------------------------------------------"
     echo "stream                    - 显示管理菜单"
-    echo "stream start              - 启动 StreamAgent"
-    echo "stream stop               - 停止 StreamAgent"
-    echo "stream restart            - 重启 StreamAgent"
-    echo "stream status             - 查看 StreamAgent 状态"
-    echo "stream enable             - 设置 StreamAgent 开机自启"
-    echo "stream disable            - 取消 StreamAgent 开机自启"
-    echo "stream log                - 查看 StreamAgent 日志"
-    echo "stream update             - 更新 StreamAgent 最新版"
-    echo "stream update x.x.x       - 更新 StreamAgent 指定版本"
-    echo "stream install            - 安装 StreamAgent"
-    echo "stream uninstall          - 卸载 StreamAgent"
-    echo "stream version            - 查看 StreamAgent 版本"
+    echo "stream start              - 启动 Stream"
+    echo "stream stop               - 停止 Stream"
+    echo "stream restart            - 重启 Stream"
+    echo "stream status             - 查看 Stream 状态"
+    echo "stream enable             - 设置 Stream 开机自启"
+    echo "stream disable            - 取消 Stream 开机自启"
+    echo "stream log                - 查看 Stream 日志"
+    echo "stream update             - 更新 Stream 最新版"
+    echo "stream update x.x.x       - 更新 Stream 指定版本"
+    echo "stream install            - 安装 Stream"
+    echo "stream uninstall          - 卸载 Stream"
+    echo "stream version            - 查看 Stream 版本"
     echo "------------------------------------------"
 }
 
 show_menu() {
     echo -e "
-  ${green}StreamAgent 后端管理脚本${plain}
+  ${green}Stream 后端管理脚本${plain}
 
   ${green}0.${plain} 退出脚本
 ————————————————
-  ${green}1.${plain} 安装 StreamAgent
-  ${green}2.${plain} 更新 StreamAgent
-  ${green}3.${plain} 卸载 StreamAgent
+  ${green}1.${plain} 安装 Stream
+  ${green}2.${plain} 更新 Stream
+  ${green}3.${plain} 卸载 Stream
 ————————————————
-  ${green}4.${plain} 启动 StreamAgent
-  ${green}5.${plain} 停止 StreamAgent
-  ${green}6.${plain} 重启 StreamAgent
-  ${green}7.${plain} 查看 StreamAgent 日志
+  ${green}4.${plain} 启动 Stream
+  ${green}5.${plain} 停止 Stream
+  ${green}6.${plain} 重启 Stream
+  ${green}7.${plain} 查看 Stream 日志
 ————————————————
-  ${green}8.${plain} 设置 StreamAgent 开机自启
-  ${green}9.${plain} 取消开机自启
+  ${green}8.${plain} 设置 Stream 自启
+  ${green}9.${plain} 取消 Stream 自启
 ————————————————
- ${green}10.${plain} 查看 StreamAgent 状态
- ${green}11.${plain} 查看 StreamAgent 版本
+ ${green}10.${plain} 查看 Stream 状态
+ ${green}11.${plain} 查看 Stream 版本
  "
     show_status
     echo && read -p "请输入选择 [0-11]: " num
